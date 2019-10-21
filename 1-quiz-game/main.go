@@ -32,13 +32,6 @@ func parseProblems(lines [][]string) []problem {
 	return returnValue
 }
 
-func serveProblem(i int, problem *problem) bool {
-	fmt.Printf("Problem #%d: %s = ", i+1, problem.question)
-	var answer string
-	fmt.Scanf("%s\n", &answer)
-	return answer == problem.answer
-}
-
 func main() {
 	csvFileName := flag.String("csv", "problems.csv", "csv question,answer pairs")
 	timeLimit := flag.Int("limit", 15, "quiz time limit (seconds)")
@@ -56,13 +49,21 @@ func main() {
 
 	correct := 0
 	for i, problem := range problems {
+		fmt.Printf("Problem #%d: %s = ", i+1, problem.question)
+		answerCh := make(chan string)
+
+		go func() {
+			var answer string
+			fmt.Scanf("%s\n", &answer)
+			answerCh <- answer
+		}()
+
 		select {
 		case <-timer.C:
-			fmt.Printf("Score: %d/%d", correct, len(problems))
+			fmt.Printf("\nScore: %d/%d", correct, len(problems))
 			return
-		default:
-			outcome := serveProblem(i, &problem)
-			if outcome {
+		case answer := <-answerCh:
+			if answer == problem.answer {
 				correct++
 			}
 		}
