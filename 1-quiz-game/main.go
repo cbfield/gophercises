@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 )
 
 func checkErr(err error, msg string) {
@@ -40,6 +41,7 @@ func serveProblem(i int, problem *problem) bool {
 
 func main() {
 	csvFileName := flag.String("csv", "problems.csv", "csv question,answer pairs")
+	timeLimit := flag.Int("limit", 15, "quiz time limit (seconds)")
 	flag.Parse()
 
 	file, err := os.Open(*csvFileName)
@@ -50,14 +52,19 @@ func main() {
 	checkErr(err, fmt.Sprintf("Failed to parse file: %s", *csvFileName))
 
 	problems := parseProblems(lines)
+	timer := time.NewTimer(time.Duration(*timeLimit) * time.Second)
 
 	correct := 0
 	for i, problem := range problems {
-		outcome := serveProblem(i, &problem)
-		if outcome {
-			correct++
+		select {
+		case <-timer.C:
+			fmt.Printf("Score: %d/%d", correct, len(problems))
+			return
+		default:
+			outcome := serveProblem(i, &problem)
+			if outcome {
+				correct++
+			}
 		}
 	}
-
-	fmt.Printf("Score: %d/%d", correct, len(problems))
 }
